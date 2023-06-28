@@ -1,3 +1,4 @@
+use std::ops::{Index, IndexMut};
 use std::str::Bytes;
 
 
@@ -11,9 +12,23 @@ struct MEM {
 
 impl MEM {
     fn write_word(&mut self, data: WORD, addr: u32, cycles: &mut u32) {
-        self.data[addr as usize] = (data & 0xFF) as u8;
-        self.data[addr as usize + 1] = (data >> 8) as u8;
+        self[addr as usize] = (data & 0xFF) as u8;
+        self[addr as usize + 1] = (data >> 8) as u8;
         *cycles -= 2;
+    }
+}
+
+impl Index<usize> for MEM {
+    type Output = BYTE;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.data[index]
+    }
+}
+
+impl IndexMut<usize> for MEM {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.data[index]
     }
 }
 
@@ -53,7 +68,7 @@ impl CPU {
     
 
     fn fetch_byte(&mut self, cycles: &mut u32, mem: &mut MEM) -> BYTE {
-        let data = mem.data[self.pc as usize];
+        let data = mem[self.pc as usize];
         self.pc += 1;
         *cycles -= 1;
         return data;
@@ -61,17 +76,17 @@ impl CPU {
 
     fn fetch_word(&mut self, cycles: &mut u32, mem: &mut MEM) -> WORD {
         // 6502 is little endian
-        let mut data = mem.data[self.pc as usize] as u16;
+        let mut data = mem[self.pc as usize] as u16;
         self.pc += 1;
         *cycles -= 1;
-        data += (mem.data[self.pc as usize] as u16) << 8;
+        data += (mem[self.pc as usize] as u16) << 8;
         self.pc += 1;
         *cycles -= 1;
         return data;
     }
 
     fn read_byte(&mut self, cycles: &mut u32, addr: BYTE, mem: &mut MEM) -> BYTE {
-        let data = mem.data[addr as usize];
+        let data = mem[addr as usize];
         self.pc += 1;
         *cycles -= 1;
         return data;
@@ -120,9 +135,9 @@ fn main() {
     cpu.reset( &mut mem);
     print!("CPU: {:?}", cpu);
     // start inline program
-    mem.data[0xFFFC] = CPU::INS_LDA_ZP;
-    mem.data[0xFFFD] = 0x42;
-    mem.data[0x42] = 0x10;
+    mem[0xFFFC] = CPU::INS_LDA_ZP;
+    mem[0xFFFD] = 0x42;
+    mem[0x42] = 0x10;
     // end inline program
     cpu.exec( &mut 3, &mut mem);
     print!("MEM: {:?}", mem);
